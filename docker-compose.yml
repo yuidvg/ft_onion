@@ -1,0 +1,15 @@
+services:
+  nginx:
+    build: ./services/nginx
+    expose:
+      - "80"
+
+  tor:
+    build: ./services/tor
+    depends_on:
+      - nginx
+
+  ssh:
+    build: ./services/ssh
+    ports:
+      - "4242:22"

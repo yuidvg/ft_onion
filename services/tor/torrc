@@ -1,0 +1,7 @@
+# Tor general settings
+Log notice file /var/log/tor/notices.log
+DataDirectory /var/lib/tor
+
+# Hidden Service configuration
+HiddenServiceDir /var/lib/tor/hidden_service
+HiddenServicePort 80 nginx:80
