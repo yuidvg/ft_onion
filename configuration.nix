@@ -6,7 +6,7 @@
   users.users.alice = {
     isNormalUser = true;
     extraGroups = [ "wheel" "docker" ]; # Enable ‘sudo’ and Docker access for the user.
-    createHome = false; # Home dir provided by bind mount
+    createHome = true; # Home dir provided by bind mount
     initialPassword = "test";
   };
 
@@ -19,12 +19,37 @@
   # Enable Docker daemon (rootful). For rootless, use virtualisation.docker.rootless.enable
   virtualisation.docker.enable = true;
 
-  # Bind-mount the host workspace directory as Alice's home
-  fileSystems."/home/alice" = {
-    device = "/workspace";
-    fsType = "none"; # bind mount
-    options = [ "bind" "x-systemd.requires-mounts-for=/workspace" ];
-    neededForBoot = true; # mount early
+  # Copy the host workspace into Alice's home at boot instead of bind-mounting
+  systemd.tmpfiles.rules = [
+    # Ensure the target directory exists with correct ownership
+    "d /home/alice/workspace 0755 alice users - -"
+  ];
+
+  systemd.services.copy-workspace = {
+    description = "Copy /workspace to /home/alice/workspace on boot";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" ];
+
+    serviceConfig = {
+      Type = "oneshot";
+      User = "alice";
+      Group = "users";
+      ExecStart = ''${pkgs.bash}/bin/bash -euc '
+        src="";
+        if [ -d /workspace ]; then
+          src=/workspace
+        elif [ -d /tmp/ft_onion ]; then
+          src=/tmp/ft_onion
+        else
+          echo "No workspace source directory found; skipping copy." >&2
+          exit 0
+        fi
+        exec ${pkgs.rsync}/bin/rsync -a --delete "$src/" /home/alice/workspace/
+      '
+      '';
+    };
+    # Skip unit entirely if neither path exists at boot
+    conditionPathExists = [ "/workspace" "/tmp/ft_onion" ];
   };
 
   system.stateVersion = "24.05";
