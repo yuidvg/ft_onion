@@ -344,7 +344,7 @@ build_and_enter_nix_container() {
     log_success "🚀 Entering Nix container with flake support!"
 
     # Execute the container interactively
-    exec docker run -it --rm \
+    exec docker run -it --rm --privileged \
         -v "$(pwd)":/workspace \
         -w /workspace \
         "$IMAGE_NAME" \
