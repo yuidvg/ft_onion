@@ -1,5 +1,9 @@
-{ config, pkgs, ... }:
+{ config, pkgs, modulesPath, ... }:
 {
+  # これを追加
+  imports = [
+    "${modulesPath}/virtualisation/qemu-vm.nix"
+  ];
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
@@ -25,32 +29,27 @@
     "d /home/alice/workspace 0755 alice users - -"
   ];
 
-  systemd.services.copy-workspace = {
-    description = "Copy /workspace to /home/alice/workspace on boot";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "local-fs.target" ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      User = "alice";
-      Group = "users";
-      ExecStart = ''${pkgs.bash}/bin/bash -euc '
-        src="";
-        if [ -d /workspace ]; then
-          src=/workspace
-        elif [ -d /tmp/ft_onion ]; then
-          src=/tmp/ft_onion
-        else
-          echo "No workspace source directory found; skipping copy." >&2
-          exit 0
-        fi
-        exec ${pkgs.rsync}/bin/rsync -a --delete "$src/" /home/alice/workspace/
-      '
-      '';
+  
+  # 1) まず QEMU に「/workspace を共有してね」と伝える
+  virtualisation.sharedDirectories = {
+    workspace = {                 # ←名前は自由。後で device= に使う
+      source = "/workspace";      # ホスト側の絶対パス
+      target = "/workspace";      # ゲスト内で見える場所
+      # readOnly = true;          # 読み取り専用にしたいなら付ける
     };
-    # Skip unit entirely if neither path exists at boot
-    conditionPathExists = [ "/workspace" "/tmp/ft_onion" ];
   };
+
+  # 2) ゲストがブート時に /workspace をマウントする
+  fileSystems."/workspace" = {
+    device  = "workspace";        # ① で付けた名前
+    fsType  = "9p";
+    options = "trans=virtio,version=9p2000.L,rw,cache=mmap";
+    neededForBoot = true;         # ブート後に手動で mount するなら false
+  };
+
+  # すでに用意していた “/workspace をコピーする” サービスは不要になるので
+  # 有効にしていた場合は無効化しておく
+  systemd.services.copy-workspace.enable = false;
 
   system.stateVersion = "24.05";
 }

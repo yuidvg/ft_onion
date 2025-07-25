@@ -4,3 +4,4 @@ result
 .direnv/
 *.log
 .vscode/dist-cabal-repl
+*.qcow2
