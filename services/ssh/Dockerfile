@@ -6,9 +6,8 @@ RUN apt-get update \
 
 RUN mkdir -p /run/sshd
 
-# Harden SSH configuration
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config \
-    && sed -i 's/#ChallengeResponseAuthentication yes/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+# Copy custom SSH configuration
+COPY sshd_config /etc/ssh/sshd_config
 
 # Create user for SSH access
 ARG SSH_USER=devuser
