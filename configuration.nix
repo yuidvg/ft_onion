@@ -18,10 +18,17 @@
     cowsay
     lolcat
     docker # Docker client if needed outside of the service
+    torsocks # Tor SOCKS proxy
   ];
 
   # Enable Docker daemon (rootful). For rootless, use virtualisation.docker.rootless.enable
   virtualisation.docker.enable = true;
+
+  # Enable Tor daemon so that torsocks (or curl via SOCKS5) works out of the box
+  services.tor = {
+    enable = true;          # start tor.service at boot
+    client.enable = true;   # provide local SOCKS proxy on 9050
+  };
 
   # Automatically log in as alice on the console
   services.getty.autologinUser = "alice";
