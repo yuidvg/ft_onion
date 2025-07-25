@@ -23,6 +23,9 @@
   # Enable Docker daemon (rootful). For rootless, use virtualisation.docker.rootless.enable
   virtualisation.docker.enable = true;
 
+  # Automatically log in as alice on the console
+  services.getty.autologinUser = "alice";
+
   # Copy the host workspace into Alice's home at boot instead of bind-mounting
   systemd.tmpfiles.rules = [
     # Ensure the target directory exists with correct ownership
@@ -50,6 +53,9 @@
   # すでに用意していた “/workspace をコピーする” サービスは不要になるので
   # 有効にしていた場合は無効化しておく
   systemd.services.copy-workspace.enable = false;
+
+  # Change directory to /workspace on login
+  environment.loginShellInit = "cd /workspace";
 
   system.stateVersion = "24.05";
 }

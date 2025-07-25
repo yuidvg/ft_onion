@@ -17,6 +17,9 @@ readonly DOCKERFILE_PATH="./Dockerfile"
 readonly IMAGE_NAME="nix-flake-env"
 readonly LOG_LEVEL=${LOG_LEVEL:-INFO}
 
+# Allow caller to pass a one-shot command to run inside the container
+CMD_TO_RUN=""
+
 # === Utility Functions ===
 log_info() {
     [[ "$LOG_LEVEL" != "QUIET" ]] && echo "[INFO] $*" >&2
@@ -344,11 +347,25 @@ build_and_enter_nix_container() {
     log_success "🚀 Entering Nix container with flake support!"
 
     # Execute the container interactively
-    exec docker run -it --rm --privileged \
-        -v "$(pwd)":/workspace \
-        -w /workspace \
-        "$IMAGE_NAME" \
-        bash
+    # Use a pseudo-TTY only if STDIN and STDOUT are TTYs
+    local tty_flag="-i"  # Always keep STDIN open; add -t when possible
+    if [[ -t 0 && -t 1 ]]; then
+        tty_flag="-it"
+    fi
+
+    if [[ -n "$CMD_TO_RUN" ]]; then
+        exec docker run $tty_flag --rm --privileged \
+            -v "$(pwd)":/workspace \
+            -w /workspace \
+            "$IMAGE_NAME" \
+            bash -c "$CMD_TO_RUN"
+    else
+        exec docker run $tty_flag --rm --privileged \
+            -v "$(pwd)":/workspace \
+            -w /workspace \
+            "$IMAGE_NAME" \
+            bash
+    fi
 }
 
 show_side_effects() {
@@ -413,6 +430,14 @@ main() {
         --cleanup)
             perform_complete_cleanup
             exit 0
+            ;;
+        --cmd)
+            if [[ -z "${2:-}" ]]; then
+                log_error "--cmd requires an argument"
+                exit 1
+            fi
+            CMD_TO_RUN="$2"
+            shift 2
             ;;
         --show-side-effects)
             show_side_effects
